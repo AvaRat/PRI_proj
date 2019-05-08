@@ -27,6 +27,19 @@ void free_matrix(Matrix mat)
   free(mat.matrix);
 }
 
+void print_matrix(Matrix mat, char name[30])
+{
+  printf("%s\n", name);
+  for(int row=0; row < mat.n_rows; row++)
+  {
+    for(int col=0; col < mat.n_cols; col++)
+    {
+      printf("%f ", mat.matrix[row][col]);
+    }
+    printf("\n");
+  }
+}
+
 Matrix create_matrix(int n_rows, int n_cols)
 {
   Matrix mat;
@@ -39,41 +52,41 @@ Matrix create_matrix(int n_rows, int n_cols)
   return mat;
 }
 
-void initialise_zeros(Matrix *mat)
+void initialise_zeros(Matrix mat)
 {
-  float **target = mat->matrix;
-  for(int r=0; r<mat->n_rows; r++)
+  float **target = mat.matrix;
+  for(int r=0; r<mat.n_rows; r++)
   {
-    for(int c=0; c<mat->n_cols; c++)
+    for(int c=0; c<mat.n_cols; c++)
     {
       target[r][c] = 0;
     }
   }
 }
 
-void initialise_like(Matrix *old, Matrix *new)
+void initialise_like(const Matrix old, Matrix new)
 {
-  if(old->n_cols != new->n_cols || old->n_rows != new->n_rows)
+  if(old.n_cols != new.n_cols || old.n_rows != new.n_rows)
   {
     printf("dimensions must be the same to initialise\n");
     exit(EXIT_FAILURE);
   }
-  float **mat = old->matrix;
-  float **target = new->matrix;
-  for(int r=0; r<old->n_rows; r++)
+  float **mat = old.matrix;
+  float **target = new.matrix;
+  for(int r=0; r<old.n_rows; r++)
   {
-    for(int c=0; c<old->n_cols; c++)
+    for(int c=0; c<old.n_cols; c++)
     {
       target[r][c] = mat[r][c];
     }
   }
 }
 
-Matrix gaussian_eliminate(Matrix *mat)
+Matrix gaussian_eliminate(Matrix mat)
 {
-  int n_rows = mat->n_rows;
-  int n_cols = mat->n_cols;
-  float **matrix = mat->matrix;
+  int n_rows = mat.n_rows;
+  int n_cols = mat.n_cols;
+  float **matrix = mat.matrix;
 
   if(n_rows != n_cols)
   {
@@ -81,7 +94,7 @@ Matrix gaussian_eliminate(Matrix *mat)
     exit(EXIT_FAILURE);
   }
   Matrix result_mat = create_matrix(n_rows, n_cols);
-  initialise_like(mat, &result_mat);
+  initialise_like(mat, result_mat);
   float **tmp = result_mat.matrix;
 
   int c = 0;
@@ -102,50 +115,85 @@ Matrix gaussian_eliminate(Matrix *mat)
   return result_mat;
 }
 
-Matrix invert(Matrix *mat)
+Matrix invert(const Matrix mat)
 {
-  int n_rows = mat->n_rows;
-  int n_cols = mat->n_cols;
-  float **matrix = mat->matrix;
+  int n_rows = mat.n_rows;
+  int n_cols = mat.n_cols;
+  float **matrix = mat.matrix;
 
   if(n_rows != n_cols)
   {
     printf("macierz musi byc kwadratowa!!\n");
     exit(EXIT_FAILURE);
   }
+
   Matrix result_mat = create_matrix(n_rows, n_cols);
   Matrix B = create_matrix(n_rows, n_cols);
-  initialise_zeros(&B);
+  initialise_zeros(B);
+
   for(int i=0; i<B.n_cols; i++)
   {
     B.matrix[i][i] = 1;
   }
 
-  initialise_like(mat, &result_mat);
+  initialise_like(mat, result_mat);
+
   float **tmp = result_mat.matrix;
   float **B_tmp = B.matrix;
-
   int c = 0;
+
+// pierwsza iteracjia, z góry do dołu
   for(; c<n_cols; c++)
   {
     int r;
+
     for(r=c+1; r<n_rows; r++)
     {
       float L = tmp[r][c]/tmp[c][c];
-      //Wn = Mat(n, col:n_cols);
+
       for(int i=c; i<n_cols; i++)
       {
-        tmp[r][i] = tmp[r][i] - L*tmp[c][i];
-        B_tmp[r][i] = B_tmp[r][i] - L*B_tmp[c][i]; 
+        tmp[r][i] = tmp[r][i] - L*tmp[c][i]; 
       }
-    //  result_mat.matrix[r][c] = L;
+      for(int i=0; i<n_cols; i++)
+        B_tmp[r][i] = B_tmp[r][i] - L*B_tmp[c][i];
+    }
+  }
+  
+// druga iteracja, od dołu do góry
+  for(c=n_cols-1; c>0; c--)
+  {
+    int r;
+
+    for(r=c-1; r>=0; r--)
+    {
+      float L = tmp[r][c]/tmp[c][c];
+
+      for(int i=c; i>=0; i--)
+      {
+        tmp[r][i] = tmp[r][i] - L*tmp[c][i];
+      }
+
+      for(int i=0; i<n_cols; i++)
+        B_tmp[r][i] = B_tmp[r][i] - L*B_tmp[c][i]; 
     }
   }
 
+ // mnożymy wiersze, aby po lewej były same "1" na diagonali
+  for(c=0; c<n_cols; c++)
+  {
+    float L = 1 / tmp[c][c];
+    tmp[c][c] *= L;
+
+    for(int r=0; r<n_rows; r++)
+      B_tmp[c][r] *= L;
+  } 
+
+  free_matrix(result_mat);
   return B;
 }
 
-float det(Matrix *mat)
+float det(const Matrix mat)
 {
   Matrix m = gaussian_eliminate(mat);
   float **matrix = m.matrix;
@@ -162,26 +210,33 @@ float det(Matrix *mat)
   return val;
 }
 
-void scalar_multiply(Matrix *mat, float scalar)
+Matrix transpose(Matrix mat)
 {
-  for(int i=0; i<mat->n_rows; i++)
+  int n_rows = mat.n_rows;
+  int n_cols = mat.n_cols;
+
+  Matrix new_mat = create_matrix(n_cols, n_rows);
+  float **new_matrix = new_mat.matrix;
+  float **matrix = mat.matrix;
+
+  for(int r=0; r<n_rows; r++)
   {
-    for(int j=0; j<mat->n_cols; j++)
-      {
-        mat->matrix[i][j] *= scalar;
-      }
+    for(int c=0; c<n_cols; c++)
+    {
+      new_matrix[c][r] = matrix[r][c];
+    }
   }
+  return new_mat;
 }
 
-void print_matrix(Matrix mat)
+void scalar_multiply(Matrix mat, float scalar)
 {
-  for(int row=0; row < mat.n_rows; row++)
+  for(int i=0; i<mat.n_rows; i++)
   {
-    for(int col=0; col < mat.n_cols; col++)
-    {
-      printf("%f ", mat.matrix[row][col]);
-    }
-    printf("\n");
+    for(int j=0; j<mat.n_cols; j++)
+      {
+        mat.matrix[i][j] *= scalar;
+      }
   }
 }
 
@@ -240,16 +295,12 @@ Matrix create_from_file(char path[50])
 
 int main(int argc, char *argv)
 {
-  char path[] = "/home/marcel/Documents/Programming/cpp_learning/PRI/mat_1.txt";
+  char path[] = "/home/marcel/Documents/Programming/cpp_learning/PRI/PRI_proj/mat_1.txt";
   Matrix mat = create_from_file(path);
-  print_matrix(mat);
-  Matrix eliminated = gaussian_eliminate(&mat);
-//  print_matrix(mat);
-  printf("\n\n");
-  print_matrix(eliminated);
-
+  print_matrix(mat, "normal");
+  Matrix mat_ = transpose(mat);
+  print_matrix(mat_, "transposed");
 
   free_matrix(mat);
-  free_matrix(eliminated);
-  return 0;
+  free_matrix(mat_);
 }
