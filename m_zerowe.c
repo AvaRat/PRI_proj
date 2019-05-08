@@ -25,7 +25,6 @@ void print_f(Function f)
 double f(Function f, double x)
 {
 //  Function f = {1, 2, 3, 5, 0, 2, 8};
-
   return (f.a*pow(x, f.b) + f.c*pow(x,f.d) + f.e*pow(x,f.f) + f.g);
 }
 
@@ -43,21 +42,18 @@ double bisekcja(Function fun, double left, double right, double eps)
   int iters = 0;
   while(fabs(a-b) > eps)
   {
-  // /  printf("a = %f\tb = %f\n", a, b);
     x = (a+b)/2;
     double val = f(fun, x);
     if(fabs(val) <= eps)
     {
       break;
-      printf("break\n");
+      printf("osiągnięto zadaną dokładność\n");
     }
     else if(val * f(fun, a) < 0)
       b = x;
     else
       a = x; 
     ++iters;
-   // printf("k\n");
-  //  printf("abs(a-b) = %f\n", fabs(a-b));
   }
   printf("nr of iterations: %d\n", iters);
   
