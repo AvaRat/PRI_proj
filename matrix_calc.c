@@ -46,7 +46,7 @@ Matrix create_matrix(int n_rows, int n_cols)
   mat.matrix = malloc(n_rows*sizeof(float*));
   mat.n_rows = n_rows;
   mat.n_cols = n_cols;
-  for(int i=0; i< n_cols; i++)
+  for(int i=0; i< n_rows; i++)
     mat.matrix[i] = malloc(n_cols*sizeof(float));
 
   return mat;
@@ -214,11 +214,9 @@ Matrix transpose(Matrix mat)
 {
   int n_rows = mat.n_rows;
   int n_cols = mat.n_cols;
-
   Matrix new_mat = create_matrix(n_cols, n_rows);
   float **new_matrix = new_mat.matrix;
   float **matrix = mat.matrix;
-
   for(int r=0; r<n_rows; r++)
   {
     for(int c=0; c<n_cols; c++)
@@ -297,10 +295,12 @@ int main(int argc, char *argv)
 {
   char path[] = "/home/marcel/Documents/Programming/cpp_learning/PRI/PRI_proj/mat_1.txt";
   Matrix mat = create_from_file(path);
+  printf("rows = %d\tcols = %d\n", mat.n_rows, mat.n_cols);
   print_matrix(mat, "normal");
   Matrix mat_ = transpose(mat);
   print_matrix(mat_, "transposed");
-
+  scalar_multiply(mat, 2.0);
+  print_matrix(mat, "multiplied");
   free_matrix(mat);
   free_matrix(mat_);
 }
